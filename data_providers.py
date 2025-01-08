@@ -14,10 +14,15 @@ def get_sp500_companies():
 def get_stock_price(symbol):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=5*365)
-    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?from={start_date.strftime('%Y-%m-%d')}&apikey={os.getenv('FMP_API_KEY')}"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5y&interval=1d"
     response = requests.get(url)
-    data = response.json().get('historical', [])
-    return pd.DataFrame(data) if data else pd.DataFrame({'date': [], 'close': []})
+    data = response.json()['chart']['result'][0]
+    
+    df = pd.DataFrame({
+        'date': pd.to_datetime(data['timestamp'], unit='s'),
+        'close': data['indicators']['quote'][0]['close']
+    })
+    return df
 
 
 def get_company_metrics(symbol):

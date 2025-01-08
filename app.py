@@ -11,67 +11,141 @@ load_dotenv()
 def init_game():
     companies = get_sp500_companies()
     target = random.choice(companies)
-    st.session_state['companies'] = companies
-    st.session_state['target'] = target
-    st.session_state['target_prices'] = get_stock_price(target['Symbol'])
-    st.session_state['target_metrics'] = get_company_metrics(target['Symbol'])
-    st.session_state['target_mcap'] = get_market_cap(target['Symbol'])
-    st.session_state['guesses'] = []
-    st.session_state['game_won'] = False
-    st.session_state['hints_revealed'] = 0
-    st.session_state['current_guess'] = ''
+    st.session_state.update({
+        'companies': companies,
+        'target': target,
+        'target_prices': get_stock_price(target['Symbol']),
+        'target_metrics': get_company_metrics(target['Symbol']),
+        'target_mcap': get_market_cap(target['Symbol']),
+        'current_guess': None,
+        'guesses': [],
+        'game_stage': 0,
+        'game_won': False,
+        'available_companies': companies,
+        'score': 0,
+        'game_complete': False
+    })
 
 
-st.title('Guess the stonk')
+# Initialize score map
+score_map = {
+        0: 1000,  # Got it first try
+        1: 800,   # After Industry
+        2: 600,   # After Market Cap
+        3: 400,   # After Founded
+        4: 200    # After HQ
+    }
 
+domain = 'https://stock-guesser.streamlit.app'
+
+st.title('Guess the stock')
 if 'companies' not in st.session_state:
-	init_game()
-
-if not st.session_state.get('game_won', False):
-    # 1. Display metrics first
-    plot_stock_price(st.session_state.get('target_prices', pd.DataFrame()))
-    metrics = st.session_state.get('target_metrics', {})
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Revenue", metrics.get('revenue', 'N/A'))
-    with col2:
-        st.metric("Revenue Growth", metrics.get('revenueGrowth', 'N/A'))
-    with col3:
-        st.metric("Profit Margin", metrics.get('profitMargin', 'N/A'))
-
-    # 2. Submit button logic (before displaying hints)
-    target = st.session_state['target']
-    guess = st.selectbox('Enter company ticker:',
-        sorted([f"{c['Symbol']} - {c['Security']}" for c in st.session_state['companies']]),
-        index=0)
-
-    submit_clicked = st.button('Submit Guess')
-    if submit_clicked:
-        guess_symbol = guess.split(' - ')[0]
-        if guess_symbol == target['Symbol']:
-            st.success('YOU GOT IT BOSSMAN')
-            st.session_state['game_won'] = True
-        else:
-            st.session_state['guesses'].append(guess)
-            st.session_state['hints_revealed'] += 1
-
-    # 3. Display hints last
-    hints_revealed = st.session_state.get('hints_revealed', 0)
-    if hints_revealed > 0:
-        st.write("Wrong")
-        st.write("Previous guesses:", ', '.join(st.session_state['guesses']))
-        st.markdown("**Hints:**")
-        if hints_revealed >= 1:
-            st.write(f"Market Cap: {st.session_state['target_mcap']}")
-        if hints_revealed >= 2:
-            st.write(f"Founded: {target['Founded']}")
-        if hints_revealed >= 3:
-            st.write(f"HQ: {target['Headquarters Location']}")
-        if hints_revealed >= 4:
-            st.write(f"Industry: {target['GICS Sub-Industry']}")
-        if hints_revealed >= 5:
-            st.error("Game Over buddy hit the bloomberg terminal")
-            st.markdown(f"**Answer: {target['Symbol']} - {target['Security']}**")
-
-if st.button('New Game'):
     init_game()
+
+
+
+if not st.session_state['game_won']:
+    # Display chart and all metrics/hints in one container
+    with st.container():
+        plot_stock_price(st.session_state['target_prices'])
+        metrics = st.session_state.get('target_metrics', {})
+
+        # First row of metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Revenue", metrics.get('revenue', 'N/A'))
+        with col2:
+            st.metric("Revenue Growth", metrics.get('revenueGrowth', 'N/A'))
+        with col3:
+            st.metric("Profit Margin", metrics.get('profitMargin', 'N/A'))
+
+    stage = st.session_state['game_stage']
+    target = st.session_state['target']
+
+    # Additional hints as captions
+    if stage >= 1:
+        st.divider()
+        hint_cols = st.columns(4)
+        with hint_cols[0]:
+            st.info(f"Industry: {target['GICS Sector']}")
+        if stage >= 2:
+            with hint_cols[1]:
+                st.info(f"Market Cap: {st.session_state['target_mcap']}")
+        if stage >= 3:
+            with hint_cols[2]:
+                st.info(f"Founded: {target['Founded']}")
+        if stage >= 4:
+            with hint_cols[3]:
+                st.info(f"HQ: {target['Headquarters Location']}")
+
+    # Guessing interface
+    st.divider()
+    company_options = sorted([f"{c['Symbol']} - {c['Security']}" for c in st.session_state['available_companies']])
+    st.write(f"**Companies Remaining:** {len(company_options)}")
+
+    selected = st.selectbox(
+        'Select company:',
+        company_options,
+        key=f'select_{stage}'
+    )
+
+    # Centered submit button
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        submit_clicked = st.button('Submit Guess 🎲', key=f'submit_{stage}', use_container_width=True)
+
+    # Compact previous guesses in columns
+    if st.session_state['guesses']:
+        st.caption("❌ Previous Guesses")
+        cols = st.columns(len(st.session_state['guesses']))
+        for idx, guess in enumerate(st.session_state['guesses']):
+            with cols[idx]:
+                st.caption(f":red[{guess}]")  # Using caption and colored text instead of error box
+
+    if submit_clicked:
+        guess_symbol = selected.split(' - ')[0]
+
+        if guess_symbol == target['Symbol']:
+            score = score_map.get(stage, 0)
+            st.session_state['score'] = score
+            st.session_state['game_complete'] = True
+            st.success('Correct!')
+
+            share_text = f"🎯 Guess the Stonk\n💰 Score: {score}/1000\nPlay at {domain}"
+            st.code(share_text, language=None)
+            st.caption("👆 Click to copy score")
+        else:
+            st.session_state['guesses'].append(selected)
+
+            if stage < 4:
+                # Update available companies for next stage
+                available_companies = st.session_state['companies']
+
+                if stage == 0:
+                    available_companies = [c for c in available_companies if c['GICS Sector'] == target['GICS Sector']]
+                elif stage == 1:
+                    sector_companies = [c for c in available_companies if c['GICS Sector'] == target['GICS Sector']]
+                    available_companies = [target] + random.sample([c for c in sector_companies if c != target], min(9, len(sector_companies)-1))
+                elif stage == 2:
+                    current_companies = st.session_state['available_companies']
+                    available_companies = [target] + random.sample([c for c in current_companies if c != target], min(4, len(current_companies)-1))
+                elif stage == 3:
+                    current_companies = st.session_state['available_companies']
+                    available_companies = [target] + random.sample([c for c in current_companies if c != target], 1)
+
+                st.session_state['available_companies'] = available_companies
+                st.session_state['game_stage'] += 1
+                st.rerun()
+            else:
+                st.error("Game Over!")
+                st.markdown(f"**Answer:** {target['Symbol']} - {target['Security']}")
+                share_text = f"🎯 Guess the Stonk\n💰 Score: 0/1000\nPlay at {domain}"
+                st.code(share_text, language=None)
+                st.caption("👆 Click to copy score")
+
+
+# New Game button at bottom
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    if st.button('New Game 🔄', use_container_width=True):
+        init_game()

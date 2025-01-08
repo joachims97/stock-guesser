@@ -51,12 +51,12 @@ if not st.session_state['game_won']:
         metrics = st.session_state.get('target_metrics', {})
 
         # First row of metrics
-        col1, col2, col3 = st.columns(3)
-        with col1:
+        metric_cols = st.columns([1,1,1], gap="small")
+        with metric_cols[0]:
             st.metric("Revenue", metrics.get('revenue', 'N/A'))
-        with col2:
+        with metric_cols[1]:
             st.metric("Revenue Growth", metrics.get('revenueGrowth', 'N/A'))
-        with col3:
+        with metric_cols[2]:
             st.metric("Profit Margin", metrics.get('profitMargin', 'N/A'))
 
     stage = st.session_state['game_stage']
@@ -86,6 +86,8 @@ if not st.session_state['game_won']:
     selected = st.selectbox(
         'Select company:',
         company_options,
+        index=None,
+        placeholder="Search for a company...",
         key=f'select_{stage}'
     )
 
@@ -109,14 +111,16 @@ if not st.session_state['game_won']:
             score = score_map.get(stage, 0)
             st.session_state['score'] = score
             st.session_state['game_complete'] = True
+            st.session_state['game_won'] = True
             st.success('Correct!')
 
-            share_text = f"🎯 Guess the Stonk\n💰 Score: {score}/1000\nPlay at {domain}"
-            st.code(share_text, language=None)
-            st.caption("👆 Click to copy score")
+            st.write("👇Share Results")
+            share_text = f"📈Guess the Stock\n💰 Score: {score}/1000\nPlay at {domain}"
+            code_block = st.code(share_text, language=None)
+            st.caption("A copy icon will appear in the top right when you hover over the box")
+
         else:
             st.session_state['guesses'].append(selected)
-
             if stage < 4:
                 # Update available companies for next stage
                 available_companies = st.session_state['companies']
@@ -137,15 +141,19 @@ if not st.session_state['game_won']:
                 st.session_state['game_stage'] += 1
                 st.rerun()
             else:
+                st.session_state['game_won'] = True
                 st.error("Game Over!")
                 st.markdown(f"**Answer:** {target['Symbol']} - {target['Security']}")
-                share_text = f"🎯 Guess the Stonk\n💰 Score: 0/1000\nPlay at {domain}"
-                st.code(share_text, language=None)
-                st.caption("👆 Click to copy score")
+                st.write("👇Share Results")
+                share_text = f"📈 Guess the Stock\n💰 Score: 0/1000\nPlay at {domain}"
+                code_block = st.code(share_text, language=None)
+                st.caption("A copy icon will appear in the top right when you hover over the box")
 
 
 # New Game button at bottom
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
     if st.button('New Game 🔄', use_container_width=True):
-        init_game()
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.rerun()

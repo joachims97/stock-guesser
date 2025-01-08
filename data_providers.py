@@ -12,18 +12,25 @@ def get_sp500_companies():
 
 
 def get_stock_price(symbol):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=5*365)
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5y&interval=1d"
-    response = requests.get(url)
-    data = response.json()['chart']['result'][0]
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
     
-    df = pd.DataFrame({
-        'date': pd.to_datetime(data['timestamp'], unit='s'),
-        'close': data['indicators']['quote'][0]['close']
-    })
-    return df
-
+    try:
+        response = requests.get(url, headers=headers)
+        data = response.json()['chart']['result'][0]
+        
+        df = pd.DataFrame({
+            'date': pd.to_datetime(data['timestamp'], unit='s'),
+            'close': data['indicators']['quote'][0]['close']
+        })
+        return df
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return pd.DataFrame({'date': [], 'close': []})
+        
 
 def get_company_metrics(symbol):
     url = "https://yahoo-finance166.p.rapidapi.com/api/stock/get-financial-data"
@@ -52,5 +59,4 @@ def get_market_cap(symbol):
         return data[0]['mktCap']
     except:
         return None
-
 

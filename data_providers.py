@@ -52,11 +52,13 @@ def get_company_metrics(symbol):
 
 
 def get_market_cap(symbol):
-    url = f"https://financialmodelingprep.com/api/v3/profile/{symbol}?apikey={os.getenv('FMP_API_KEY')}"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        return data[0]['mktCap']
-    except:
-        return None
+   url = f"https://api.api-ninjas.com/v1/marketcap?ticker={symbol}"
+   headers = {'X-Api-Key': os.getenv('NINJA_API_KEY')}
+   try:
+       response = requests.get(url, headers=headers)
+       data = response.json()
+       market_cap = data['market_cap']
+       return f"${market_cap/1e12:.1f}T" if market_cap >= 1e12 else f"${market_cap/1e9:.1f}B"
+   except:
+       return None
 

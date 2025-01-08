@@ -41,37 +41,32 @@ if not st.session_state.get('game_won', False):
    target = st.session_state['target']
    hints_revealed = st.session_state.get('hints_revealed', 0)
 
-   mcap = get_market_cap(target['Symbol'])
-
-   if hints_revealed > 0:
-       st.write("Hints:")
-       if hints_revealed >= 1:
-           mcap = st.session_state['target_mcap']
-           st.write(f"Market Cap: ${mcap:,.0f}")
-       if hints_revealed >= 2:
-           st.write(f"Founded: {target['Founded']}")
-       if hints_revealed >= 3:
-           st.write(f"HQ: {target['Headquarters Location']}")
-       if hints_revealed >= 4:
-           st.write(f"Industry: {target['GICS Sub-Industry']}")
-       if hints_revealed >= 5:
-           st.write(f"Answer: {target['Symbol']}")
-
    company_symbols = [c['Symbol'] for c in st.session_state['companies']]
    guess = st.selectbox('Enter company ticker:', sorted(company_symbols))
 
    if st.button('Submit Guess'):
-       if guess == target['Symbol']:
-           st.success('Correct! You won!')
-           st.session_state['game_won'] = True
-       else:
-           st.session_state['guesses'].append(guess)
-           st.write("Previous guesses:", ', '.join(st.session_state['guesses']))
-
-           if len(st.session_state['guesses']) <= 5:
-               st.session_state['hints_revealed'] = len(st.session_state['guesses']) + 1
-           if len(st.session_state['guesses']) >= 5:
-               st.error("Game Over!")
+    if guess == target['Symbol']:
+        st.success('Correct! You won!')
+        st.session_state['game_won'] = True
+    else:
+        st.session_state['guesses'].append(guess)
+        st.write("Previous guesses:", ', '.join(st.session_state['guesses']))
+        st.session_state['hints_revealed'] += 1  # Increment hints here
+        
+        # Show hints based on number of guesses
+        st.write("Hints:")
+        if st.session_state['hints_revealed'] >= 1:
+            mcap = st.session_state['target_mcap']
+            st.write(f"Market Cap: {mcap}")
+        if st.session_state['hints_revealed'] >= 2:
+            st.write(f"Founded: {target['Founded']}")
+        if st.session_state['hints_revealed'] >= 3:
+            st.write(f"HQ: {target['Headquarters Location']}")
+        if st.session_state['hints_revealed'] >= 4:
+            st.write(f"Industry: {target['GICS Sub-Industry']}")
+        if st.session_state['hints_revealed'] >= 5:
+            st.write(f"Answer: {target['Symbol']}")
+            st.error("Game Over!")
 
 if st.button('New Game'):
     init_game()

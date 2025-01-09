@@ -7,11 +7,39 @@ def plot_stock_price(df):
         return
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['date'], y=df['close'], mode='lines'))
-    fig.update_layout(
-        title='5 Year Stock Price',
-        xaxis_title='Date',
-        yaxis_title='Price',
-        showlegend=False
+
+    fig.add_trace(
+        go.Scatter(
+            x=df['date'],
+            y=df['close'],
+            mode='lines',
+            hovertemplate='$%{y:.2f}<extra></extra>',
+            line=dict(color='#2196F3')
+        )
     )
-    st.plotly_chart(fig)
+
+    fig.update_layout(
+        title='5 Year Chart',
+        xaxis_title='Date',
+        yaxis_title='Price (USD)',
+        showlegend=False,
+        hovermode='x',
+        xaxis=dict(
+            fixedrange=False,
+            showspikes=True,  # Enable spikes (vertical line)
+            spikethickness=1,
+            spikecolor="gray",
+            spikemode="across",  # Makes the spike go across the plot
+            spikesnap="cursor"
+        ),
+        yaxis=dict(
+            fixedrange=True,
+            showspikes=False  # No horizontal spike
+        ),
+        dragmode=False
+    )
+
+    st.plotly_chart(fig, config={
+        'displayModeBar': False,
+        'scrollZoom': False
+    })

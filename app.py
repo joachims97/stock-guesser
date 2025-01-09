@@ -1,6 +1,5 @@
 import streamlit as st
 import random
-import pandas as pd
 from dotenv import load_dotenv
 from data_providers import get_sp500_companies, get_stock_price, get_company_metrics, get_market_cap
 from visualizations import plot_stock_price
@@ -38,10 +37,9 @@ score_map = {
 
 domain = 'https://stock-guesser.streamlit.app'
 
-st.title('Guess the stock')
+st.header('Guess the Stock 📈🤔')
 if 'companies' not in st.session_state:
     init_game()
-
 
 
 if not st.session_state['game_won']:
@@ -50,12 +48,14 @@ if not st.session_state['game_won']:
         plot_stock_price(st.session_state['target_prices'])
         metrics = st.session_state.get('target_metrics', {})
 
+        st.subheader("FY24 Financials")
+
         # First row of metrics
         metric_cols = st.columns([1,1,1], gap="small")
         with metric_cols[0]:
-            st.metric("Revenue", metrics.get('revenue', 'N/A'))
+            st.metric("1-Yr Revenue", metrics.get('revenue', 'N/A'))
         with metric_cols[1]:
-            st.metric("Revenue Growth", metrics.get('revenueGrowth', 'N/A'))
+            st.metric("Y/Y Revenue Growth", metrics.get('revenueGrowth', 'N/A'))
         with metric_cols[2]:
             st.metric("Profit Margin", metrics.get('profitMargin', 'N/A'))
 
@@ -65,6 +65,7 @@ if not st.session_state['game_won']:
     # Additional hints as captions
     if stage >= 1:
         st.divider()
+        st.caption('Hints')
         hint_cols = st.columns(4)
         with hint_cols[0]:
             st.info(f"Industry: {target['GICS Sector']}")
